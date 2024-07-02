@@ -15,7 +15,41 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import threading
 from make_chart import make_chart
+# -----------------------------------------------------------------------------------------------------------------------
+version = "v1.0-beta"
 
+def get_latest_release():
+    try:
+        url = f"https://api.github.com/repos/shidaijiya/get_boc_rate/releases/latest"
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            release_info = response.json()
+            return release_info['tag_name']
+        else:
+            print(f"无法连接到GitHub状态码:{response.status_code}\n"
+                  "正在退出...")
+            time.sleep(5)
+            sys.exit()
+    except requests.RequestException:
+        print("无法连接到互联网\n"
+              "正在退出...")
+        time.sleep(5)
+        sys.exit()
+
+latest_version = get_latest_release()
+
+if latest_version == "version":
+    print(f"当前版本:{version}已经为最新版本")
+else:
+    print(f"检测到新版本为了更好的体验\n"
+          f"最新版本为:{latest_version}\n"
+          f"请前往:https://github.com/shidaijiya/get_boc_rate/releases/tag/release\n"
+          f"更新新版本,程序将在120s后退出...")
+    time.sleep(120)
+    sys.exit()
+
+# -----------------------------------------------------------------------------------------------------------------------
 # 配置文件路径
 config_file_path = 'config.json'
 # 默认配置
@@ -65,7 +99,7 @@ if only_making:
     if save_file_exists:
         print("您配置了仅制作表格,正在制作")
         make_chart()
-        print("制作完成！正在退出")
+        print("制作完成！正在退出...")
         time.sleep(3)
         sys.exit()
     else:
@@ -104,15 +138,7 @@ driver.set_window_size(window_size[0], window_size[1])
 driver.get(rate_url)
 
 
-def get_latest_release(owner, repo):
-    url = f"https://api.github.com/repos/shidaijiya/get_boc_rate/releases/latest"
-    response = requests.get(url)
 
-    if response.status_code == 200:
-        release_info = response.json()
-        return release_info['tag_name']
-    else:
-        return None
 
 def load_setting():
     # 等待页面加载完成并选择美元
