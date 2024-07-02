@@ -43,7 +43,7 @@ def get_latest_release():
 latest_version = get_latest_release()
 
 if latest_version == version:
-    print(f"当前版本:{version}已经为最新版本")
+    print(f"当前版本:{version} 已经为最新版本")
 else:
     print(f"检测到新版本为了更好的体验\n"
           f"最新版本为:{latest_version}\n"
