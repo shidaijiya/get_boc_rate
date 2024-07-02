@@ -47,7 +47,7 @@ if latest_version == version:
 else:
     print(f"检测到新版本为了更好的体验\n"
           f"最新版本为:{latest_version}\n"
-          f"请前往:https://github.com/shidaijiya/get_boc_rate/releases/tag/release\n"
+          f"下载链接:https://codeload.github.com/shidaijiya/get_boc_rate/zip/refs/tags/{latest_version}\n"
           f"更新新版本,程序将在120s后退出...")
     time.sleep(120)
     sys.exit()
