@@ -190,7 +190,7 @@ else:
     print(f"检测到新版本为了更好的体验\n"
           f"最新版本为:{latest_version}\n"
           f"下载链接:{download_url}\n"
-          f"更新新版本,程序将在120s后退出...")
+          f"请更新新版本,程序将在120s后退出...")
     time.sleep(120)
     sys.exit()
 
