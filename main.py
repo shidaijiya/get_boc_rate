@@ -16,28 +16,157 @@ from datetime import datetime, timedelta
 import threading
 from make_chart import make_chart
 
-# -----------------------------------------------------------------------------------------------------------------------
-version = "v1.0-beta"
 
+
+
+# -----------------------------------------------------------------------------------------------------------------------
+def load_setting():
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    # 等待页面加载完成并选择美元
+    wait = WebDriverWait(driver, 10)
+    select_element = wait.until(EC.presence_of_element_located((By.ID, "pjname")))
+    select = Select(select_element)
+    select.select_by_visible_text(get_currency)
+
+    # 填充开始日期
+    search_ipt_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "search_ipt")))
+    if not len(search_ipt_elements) > 2:
+        print("遇到错误找不到日期填充框\n"
+              "进程将在30s后退出...")
+        time.sleep(30)
+        sys.exit()
+    if customize:
+        if auto_end_date:
+            customize_start_date = calculate_past_date(customize_date)
+            search_ipt_elements[1].send_keys(customize_start_date)
+            search_ipt_elements[2].send_keys(today)
+        else:
+            customize_start_date = calculate_past_date(customize_date,end_date)
+            search_ipt_elements[1].send_keys(customize_start_date)
+            search_ipt_elements[2].send_keys(end_date)
+    else:
+        search_ipt_elements[1].send_keys(start_date)
+        if auto_end_date:
+            # 检查是否自动设置结束日期
+            search_ipt_elements[2].send_keys(today)
+        else:
+            search_ipt_elements[2].send_keys(end_date)
+
+
+    # 等待所有搜索按钮元素加载完成并点击第二个
+    search_buttons = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "input.search_btn")))
+    if len(search_buttons) > 1:
+        search_buttons[1].click()
+    else:
+        print("遇到错误找不到搜索按钮\n"
+              "进程将在30s后退出...")
+        time.sleep(30)
+        sys.exit()
 
 def get_latest_release():
     try:
-        url = f"https://api.github.com/repos/shidaijiya/get_boc_rate/releases/latest"
-        response = requests.get(url)
+        # 获取系统代理设置
+        http_proxy = os.environ.get('HTTP_PROXY') or os.environ.get('http_proxy')
+        https_proxy = os.environ.get('HTTPS_PROXY') or os.environ.get('https_proxy')
+
+        proxies = {
+            "http": http_proxy,
+            "https": https_proxy
+        }
+
+        # 发送请求获取最新的发布信息
+        url = "https://api.github.com/repos/shidaijiya/get_boc_rate/releases/latest"
+        response = requests.get(url, proxies=proxies)
 
         if response.status_code == 200:
             release_info = response.json()
             return release_info['tag_name']
         else:
-            print(f"无法连接到GitHub状态码:{response.status_code}\n"
+            print(f"无法连接到GitHub，状态码: {response.status_code}\n"
                   "正在退出...")
             time.sleep(5)
             sys.exit()
-    except requests.RequestException:
-        print("无法连接到互联网\n"
+    except requests.RequestException as e:
+        print(f"无法连接到互联网: {e}\n"
               "正在退出...")
         time.sleep(5)
         sys.exit()
+
+
+def calculate_completion_time(need_time):
+    # 计算预计完成的具体时间
+    estimated_completion_time = datetime.now() + timedelta(minutes=need_time)
+
+    # 格式化为 "小时:分钟" 的格式
+    formatted_completion_time = estimated_completion_time.strftime("%H:%M")
+
+    # 返回预计完成时间的字符串
+    return formatted_completion_time
+
+
+def extract_data():
+    # 等待结果加载完成
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "tr.odd")))
+
+    # 获取页面源代码
+    html = driver.page_source
+
+    # 使用Beautiful Soup解析HTML
+    soup = BeautifulSoup(html, "html.parser")
+
+    # 找到所有<tr class="odd">标签
+    detail_rows = soup.find_all("tr", class_="odd")
+
+    # 遍历每个<tr class="odd">标签并提取数据
+    for detail_row in detail_rows:
+        cells = detail_row.find_all("td")
+        row_data = {
+            "currency": cells[0].get_text(strip=True),
+            "buying_fx_rate": cells[1].get_text(strip=True),
+            "buying_cash_rate": cells[2].get_text(strip=True),
+            "selling_fx_rate": cells[3].get_text(strip=True),
+            "selling_cash_rate": cells[4].get_text(strip=True),
+            "boc_conversion_rate": cells[5].get_text(strip=True),
+            "time": cells[6].get_text(strip=True)
+        }
+        data.append(row_data)
+
+
+def calculate_past_date(input_str, start_date_str=None):
+    # 解析传入的日期字符串，如果没有提供，则使用当前日期
+    if start_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    else:
+        start_date = datetime.now()
+
+    # 定义匹配输入格式的正则表达式模式（数字后跟'd'、'w'、'm'或'y'）
+    pattern = r'(\d+)([dwmy])'
+    match = re.match(pattern, input_str)
+
+    if not match:
+        raise ValueError("Invalid input format")
+
+    # 提取数字和时间单位
+    number = int(match.group(1))
+    period = match.group(2)
+
+    if period == 'd':
+        past_date = start_date - timedelta(days=number)
+    elif period == 'w':
+        past_date = start_date - timedelta(weeks=number)
+    elif period == 'm':
+        past_date = start_date - timedelta(days=number * 30)  # 将一个月近似为30天
+    elif period == 'y':
+        past_date = start_date - timedelta(days=number * 365)  # 将一年近似为365天
+    else:
+        raise ValueError("Invalid period unit")
+
+    return past_date.strftime('%Y-%m-%d')
+
+
+# -----------------------------------------------------------------------------------------------------------------------
+version = "v1.2"
 
 
 latest_version = get_latest_release()
@@ -55,13 +184,16 @@ else:
 # -----------------------------------------------------------------------------------------------------------------------
 # 配置文件路径
 config_file_path = 'config.json'
+
 # 默认配置
 default_config = {
     "rate_url": "https://srh.bankofchina.com/search/whpj/search_cn.jsp",  # 链接地址通常不需要变动
     "get_currency": "美元",  # 需要抓取的货币(中文)
-    "start_date": (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"),  # 抓取开始日期
-    "end_date": datetime.now().strftime("%Y-%m-%d"),  # 抓取结束日期(auto_end_date = True时无效）
-    "auto_end_date": True,  # 是否自动设置结束日期(开启自动默认为当天结束)
+    "start_date": (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"),  # 抓取开始日期(customize = True时无效)
+    "end_date": datetime.now().strftime("%Y-%m-%d"),  # 抓取结束日期(auto_end_date = True）
+    "customize_date": "1w", # 自定义时间范围
+    "customize": False, # 是否开启自定义时间范围
+    "auto_end_date": True,  # 是否自动设置结束日期(开启自动默认为当天结束,customize = True时无效)
     "headless": True,  # 是否使用无头模式
     "window_size": [1100, 720],  # 窗口大小
     "save_json_name": "exchange_rates.json",  # 默认保存文件名
@@ -78,15 +210,24 @@ if not os.path.exists(config_file_path):
     with open(config_file_path, 'w', encoding='utf-8') as f:
         json.dump(default_config, f, ensure_ascii=False, indent=4)
 
-# 加载 JSON 配置文件
-with open(config_file_path, 'r', encoding='utf-8') as f:
-    config = json.load(f)
+try:
+    # 加载 JSON 配置文件
+    with open(config_file_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+except json.JSONDecodeError:
+        print("配置文件格式错误\n"
+              "30s后退出...")
+        time.sleep(30)
+        sys.exit()
+
 
 # 从配置文件中获取变量
 rate_url = config['rate_url']
 get_currency = config['get_currency']
 start_date = config['start_date']
 end_date = config['end_date']
+customize_date = config['customize_date']
+customize = config['customize']
 auto_end_date = config['auto_end_date']
 headless = config['headless']
 window_size = config['window_size']
@@ -139,69 +280,7 @@ driver.set_window_size(window_size[0], window_size[1])
 driver.get(rate_url)
 
 
-def load_setting():
-    # 等待页面加载完成并选择美元
-    wait = WebDriverWait(driver, 10)
-    select_element = wait.until(EC.presence_of_element_located((By.ID, "pjname")))
-    select = Select(select_element)
-    select.select_by_visible_text(get_currency)
 
-    # 填充开始日期
-    search_ipt_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "search_ipt")))
-    if len(search_ipt_elements) > 2:
-        search_ipt_elements[1].send_keys(start_date)
-    if auto_end_date:
-        # 检查是否自动设置结束日期
-        today = datetime.now().strftime("%Y-%m-%d")
-        if len(search_ipt_elements) > 2:
-            search_ipt_elements[2].send_keys(today)
-    else:
-        if len(search_ipt_elements) > 2:
-            search_ipt_elements[2].send_keys(end_date)
-
-    # 等待所有搜索按钮元素加载完成并点击第二个
-    search_buttons = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "input.search_btn")))
-    if len(search_buttons) > 1:
-        search_buttons[1].click()
-
-
-def calculate_completion_time(need_time):
-    # 计算预计完成的具体时间
-    estimated_completion_time = datetime.now() + timedelta(minutes=need_time)
-
-    # 格式化为 "小时:分钟" 的格式
-    formatted_completion_time = estimated_completion_time.strftime("%H:%M")
-
-    # 返回预计完成时间的字符串
-    return formatted_completion_time
-
-
-def extract_data():
-    # 等待结果加载完成
-    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "tr.odd")))
-
-    # 获取页面源代码
-    html = driver.page_source
-
-    # 使用Beautiful Soup解析HTML
-    soup = BeautifulSoup(html, "html.parser")
-
-    # 找到所有<tr class="odd">标签
-    detail_rows = soup.find_all("tr", class_="odd")
-
-    # 遍历每个<tr class="odd">标签并提取数据
-    for detail_row in detail_rows:
-        cells = detail_row.find_all("td")
-        row_data = {
-            "currency": cells[0].get_text(strip=True),
-            "buying_fx_rate": cells[1].get_text(strip=True),
-            "buying_cash_rate": cells[2].get_text(strip=True),
-            "selling_fx_rate": cells[3].get_text(strip=True),
-            "selling_cash_rate": cells[4].get_text(strip=True),
-            "boc_conversion_rate": cells[5].get_text(strip=True),
-            "time": cells[6].get_text(strip=True)
-        }
-        data.append(row_data)
 
 
 load_setting()
@@ -289,10 +368,12 @@ driver.quit()
 # 将数据保存为 JSON 文件
 with open(save_json_name, 'w', encoding='utf-8') as f:
     json.dump(data, f, ensure_ascii=False, indent=4)
-print(f"获取完成！数据在{save_json_name}中")
+print(f"获取完成！数据在{save_json_name}中\n")
 
 if show_chart and save_chart:
     make_chart()
+
 else:
     print("您配置了不制作和显示图表\n"
           "本次进程结束,感谢使用再会！")
+    time.sleep(5)
