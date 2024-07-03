@@ -81,7 +81,20 @@ def get_latest_release():
 
         if response.status_code == 200:
             release_info = response.json()
-            return release_info['tag_name']
+            if 'assets' in release_info and len(release_info['assets']) > 0:
+                # 提取第一个资产文件的下载链接
+                for asset in release_info['assets']:
+                    if 'browser_download_url' in asset:
+                        return release_info['tag_name'], asset['browser_download_url']
+                print("没有找到发布版本的资产文件下载链接。\n"
+                      "正在退出...")
+                time.sleep(5)
+                sys.exit()
+            else:
+                print("没有找到发布版本的资产文件。\n"
+                      "正在退出...")
+                time.sleep(5)
+                sys.exit()
         else:
             print(f"无法连接到GitHub，状态码: {response.status_code}\n"
                   "正在退出...")
@@ -166,17 +179,17 @@ def calculate_past_date(input_str, start_date_str=None):
 
 
 # -----------------------------------------------------------------------------------------------------------------------
-version = "v1.2"
+version = "v1.23"
 
 
-latest_version = get_latest_release()
+latest_version, download_url = get_latest_release()
 
 if latest_version == version:
     print(f"当前版本:{version} 已经为最新版本")
 else:
     print(f"检测到新版本为了更好的体验\n"
           f"最新版本为:{latest_version}\n"
-          f"下载链接:https://codeload.github.com/shidaijiya/get_boc_rate/zip/refs/tags/{latest_version}\n"
+          f"下载链接:{download_url}\n"
           f"更新新版本,程序将在120s后退出...")
     time.sleep(120)
     sys.exit()
@@ -192,7 +205,7 @@ default_config = {
     "start_date": (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"),  # 抓取开始日期(customize = True时无效)
     "end_date": datetime.now().strftime("%Y-%m-%d"),  # 抓取结束日期(auto_end_date = True）
     "customize_date": "1w", # 自定义时间范围
-    "customize": False, # 是否开启自定义时间范围
+    "customize": True, # 是否开启自定义时间范围
     "auto_end_date": True,  # 是否自动设置结束日期(开启自动默认为当天结束,customize = True时无效)
     "headless": True,  # 是否使用无头模式
     "window_size": [1100, 720],  # 窗口大小
