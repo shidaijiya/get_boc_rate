@@ -69,7 +69,7 @@ pip install -r requirements.txt
     "start_date": "2023-06-01",
     "end_date": "2023-06-30",
     "customize_date": "1w",
-    "customize": false,
+    "customize": true,
     "auto_end_date": true,
     "headless": true,
     "window_size": [1100, 720],
