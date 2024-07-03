@@ -385,6 +385,9 @@ print(f"获取完成！数据在{save_json_name}中\n")
 
 if show_chart and save_chart:
     make_chart()
+    print("制作或显示图表完成！\n"
+          "本次进程结束,感谢使用再会！")
+    time.sleep(5)
 
 else:
     print("您配置了不制作和显示图表\n"
