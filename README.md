@@ -85,7 +85,7 @@ pip install -r requirements.txt
 - `get_currency`：字符串类型，表示要抓取的货币名称（中文）。
 - `start_date`：字符串类型，表示抓取的开始日期，格式为YYYY-MM-DD。
 - `end_date`：字符串类型，表示抓取的结束日期，格式为YYYY-MM-DD。
-- `customize_date`：字符串类型，表示自定义时间范围（如“1w”表示1周）。
+- `customize_date`：字符串类型，表示自定义时间范围，格式为数字+d(天),w(周),m(月),y(年)，例如:1w为1周。
 - `customize`：布尔值类型，表示是否开启自定义时间范围。
 - `auto_end_date`：布尔值类型，表示是否自动将结束日期设置为当天。
 - `headless`：布尔值类型，表示是否以无头模式运行Chrome。
