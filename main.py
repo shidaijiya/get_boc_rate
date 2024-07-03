@@ -256,7 +256,7 @@ chrome_path = "Application/chrome.exe"  # Chrome浏览器路径
 
 # 设置 Chrome 参数
 options = ChromeOptions()
-options.binary_location = chrome_path # 设置指定Chrome浏览器路径(单独运行请注释该行)
+options.binary_location = chrome_path # 设置指定Chrome浏览器路径(从代码单独运行请注释该行)
 options.add_argument("--disable-blink-features=AutomationControlled")  # 禁用某些自动化控制
 options.add_argument(
     "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")  # 设置 User-Agent
